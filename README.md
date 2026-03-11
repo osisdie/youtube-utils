@@ -12,6 +12,7 @@ YouTube video subtitle download, chapter screenshot extraction, and bilingual su
 - **Whisper Concurrency Control**: Configurable max concurrent Whisper transcriptions (default: 1 to prevent resource exhaustion)
 - **Channel Batch Processing**: Process all videos from a YouTube channel sequentially, with auto-resume support
 - **402 Auto-Stop**: Automatically stops batch processing when API credits are exhausted; re-run to resume from where it left off
+- **HTML/PDF Export**: Convert summaries to styled HTML (with embedded screenshots) and PDF; supports single video or entire channel
 
 ## Quick Start
 
@@ -50,6 +51,7 @@ If both are set, OpenAI takes priority. If neither is set, HuggingFace will atte
 | `huggingface_hub` | (Optional) HF Whisper + Qwen summary |
 | `imageio-ffmpeg` | Bundled ffmpeg for screenshot extraction |
 | `python-dotenv` | Auto-load .env configuration |
+| `markdown` | Markdown → HTML conversion for export |
 
 ### 3. Process a Single Video
 
@@ -81,6 +83,35 @@ The command is **idempotent** — re-running it will skip already-completed vide
 --skip N               Skip first N videos
 --delay SECS           Wait between videos to avoid rate limits (default: 5)
 --no-screenshots       Skip chapter screenshot extraction
+```
+
+### 5. Export Summaries to HTML / PDF
+
+Convert markdown summaries into a self-contained styled HTML (images embedded as base64). Accepts either a **channel directory** (aggregates all videos with a table of contents) or a **single video directory**.
+
+```bash
+# Entire channel → HTML
+python src/summaries_to_html.py output/youtube/my_channel --lang zh-tw
+
+# Single video → HTML
+python src/summaries_to_html.py output/youtube/my_channel/video-slug --lang en
+
+# HTML → PDF (requires Chrome/Chromium)
+python src/html_to_pdf.py output/youtube/my_channel/summary_zh-tw.html
+```
+
+**summaries_to_html.py options:**
+```
+target_dir             Channel dir (all videos) or single video dir
+--lang LANG            Summary language suffix (default: zh-tw)
+-o, --output PATH      Output HTML path (default: {target_dir}/summary_{lang}.html)
+```
+
+**html_to_pdf.py options:**
+```
+html_file              Input HTML file
+-o, --output PATH      Output PDF path (default: same name with .pdf)
+--paper-size SIZE      Paper size (default: A4)
 ```
 
 ## Pipeline
@@ -126,6 +157,8 @@ output/youtube/
 └── {channel_slug}/
     ├── channel_index.json          # (channel mode) video list
     ├── processing_results.json     # (channel mode) success/fail/skip log
+    ├── summary_zh-tw.html          # (export) aggregated HTML for all videos
+    ├── summary_en.html             # (export) aggregated HTML for all videos
     │
     └── {video_title_slug}/
         ├── metadata.json           # Video metadata + chapters
@@ -133,6 +166,8 @@ output/youtube/
         ├── transcript.txt          # Plain text transcript
         ├── summary_zh-tw.md        # Traditional Chinese summary (with embedded screenshots)
         ├── summary_en.md           # English summary (with embedded screenshots)
+        ├── summary_zh-tw.html      # (export) single video HTML
+        ├── summary_zh-tw.pdf       # (export) single video PDF
         └── screenshots/
             ├── ch01_chapter_title.jpg   # Chapter screenshots (if chapters exist)
             ├── ch02_chapter_title.jpg
@@ -165,6 +200,25 @@ python src/process_channel.py \
   --no-screenshots --limit 5
 ```
 
+### Export a single video summary to PDF
+
+```bash
+python src/summaries_to_html.py \
+  output/youtube/creatorinsider/some-video-slug \
+  --lang zh-tw
+python src/html_to_pdf.py \
+  output/youtube/creatorinsider/some-video-slug/summary_zh-tw.html
+```
+
+### Export all channel summaries to PDF
+
+```bash
+python src/summaries_to_html.py \
+  output/youtube/creatorinsider --lang en
+python src/html_to_pdf.py \
+  output/youtube/creatorinsider/summary_en.html
+```
+
 ### Resume after API credit exhaustion
 
 ```bash
@@ -183,4 +237,5 @@ python src/process_channel.py \
 - **Concurrency**: `WHISPER_MAX_CONCURRENT=1` by default to prevent resource exhaustion on local machines.
 - **Auto-Resume**: Channel processing is idempotent. Re-running skips completed videos (checks for both `summary_zh-tw.md` and `summary_en.md`).
 - **402 Auto-Stop**: When API credits are exhausted, batch processing stops immediately and cleans up partial output. Re-run to resume.
+- **HTML/PDF Export**: HTML is self-contained (images embedded as base64). PDF conversion requires Chrome or Chromium installed.
 - **Cost**: With OpenAI, ~2-6 API calls per video (depending on retries). HuggingFace free tier = $0.
