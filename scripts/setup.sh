@@ -6,9 +6,9 @@ set -euo pipefail
 
 echo "=== youtube-utils setup ==="
 
-# Check Python 3.10+
-python3 -c "import sys; assert sys.version_info >= (3, 10), 'Python 3.10+ required'" 2>/dev/null || {
-    echo "ERROR: Python 3.10+ is required"
+# Check Python 3.12+
+python3 -c "import sys; assert sys.version_info >= (3, 12), 'Python 3.12+ required'" 2>/dev/null || {
+    echo "ERROR: Python 3.12+ is required"
     exit 1
 }
 

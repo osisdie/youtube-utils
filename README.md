@@ -14,6 +14,11 @@ YouTube video subtitle download, chapter screenshot extraction, and bilingual su
 - **402 Auto-Stop**: Automatically stops batch processing when API credits are exhausted; re-run to resume from where it left off
 - **HTML/PDF Export**: Convert summaries to styled HTML (with embedded screenshots) and PDF; supports single video or entire channel
 
+## Requirements
+
+- Python 3.12+
+- Chrome or Chromium (for PDF export only)
+
 ## Quick Start
 
 ### 1. Setup
