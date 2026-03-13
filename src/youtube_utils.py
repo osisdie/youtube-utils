@@ -6,11 +6,15 @@ Core utilities for YouTube video processing:
 - Quality control with automatic retry
 """
 
+import sys
+
+if sys.version_info < (3, 12):
+    sys.exit("Python 3.12+ is required. Current: " + sys.version)
+
 import json
 import os
 import re
 import subprocess
-import sys
 import threading
 from pathlib import Path
 
@@ -138,9 +142,11 @@ def verify_summary(
 
     # Check screenshot embedding
     if screenshot_count > 0 and not _has_screenshot_refs(summary, screenshot_count):
+        pat = r"!\[.*?\]\(screenshots/.*?\)"
+        found = len(re.findall(pat, summary))
         issues.append(
             f"Missing screenshot references (expected ~{screenshot_count}, "
-            f"found {len(re.findall(r'!\\[.*?\\]\\(screenshots/.*?\\)', summary))})"
+            f"found {found})"
         )
 
     return (len(issues) == 0, issues)
@@ -165,6 +171,9 @@ def get_video_info(video_url: str) -> dict:
         "subtitles": list((data.get("subtitles") or {}).keys()),
         "auto_captions": list((data.get("automatic_captions") or {}).keys()),
         "thumbnail": data.get("thumbnail", ""),
+        "upload_date": data.get("upload_date", ""),
+        "modified_date": data.get("modified_date", ""),
+        "release_date": data.get("release_date", ""),
     }
 
 
@@ -541,6 +550,13 @@ def download_thumbnail(video_url: str, out_dir: Path) -> dict | None:
 # ---------------------------------------------------------------------------
 
 
+def _format_date(raw: str) -> str:
+    """Convert yt-dlp date string 'YYYYMMDD' to 'YYYY-MM-DD'. Returns '' on bad input."""
+    if raw and len(raw) == 8 and raw.isdigit():
+        return f"{raw[:4]}-{raw[4:6]}-{raw[6:]}"
+    return raw or ""
+
+
 def _build_summary_prompt(
     transcript: str,
     video_title: str,
@@ -549,6 +565,8 @@ def _build_summary_prompt(
     screenshots: list[dict] | None,
     lang: str,
     retry_hint: str = "",
+    upload_date: str = "",
+    modified_date: str = "",
 ) -> str:
     """Build the summary prompt for either backend."""
     if lang == "zh-TW":
@@ -605,13 +623,21 @@ def _build_summary_prompt(
             f"\n\n【修正提示】上次產出有以下問題，請務必修正：\n{retry_hint}\n"
         )
 
-    return f"""你是一個專業的影片內容摘要助手。
+    date_info = ""
+    if upload_date:
+        date_info += f"\n發布日期: {upload_date}"
+    if modified_date and modified_date != upload_date:
+        date_info += f"\n更新日期: {modified_date}"
+
+    return (
+        f"""你是一個專業的影片內容摘要助手。
 
 影片標題: {video_title}
-影片連結: {video_url}
+影片連結: {video_url}{date_info}
 {chapter_info}
-{screenshot_instruction}
-
+"""
+        + screenshot_instruction
+        + f"""
 {lang_instruction}
 {retry_section}
 請根據以下逐字稿，產生一份結構化的 Markdown 摘要，包含:
@@ -624,6 +650,7 @@ def _build_summary_prompt(
 
 逐字稿:
 {transcript}"""
+    )
 
 
 def generate_summary_with_qc(
@@ -634,6 +661,8 @@ def generate_summary_with_qc(
     screenshots: list[dict] | None = None,
     lang: str = "zh-TW",
     max_retries: int = SUMMARY_MAX_RETRIES,
+    upload_date: str = "",
+    modified_date: str = "",
 ) -> str:
     """Generate summary with quality control — verify and retry up to max_retries."""
     backend = _get_backend()
@@ -649,6 +678,8 @@ def generate_summary_with_qc(
             screenshots,
             lang,
             retry_hint,
+            upload_date=upload_date,
+            modified_date=modified_date,
         )
 
         if backend == "openai":
@@ -777,6 +808,10 @@ def process_video(
     else:
         print("  [4/6] Screenshots disabled")
 
+    # Formatted dates for summaries
+    pub_date = _format_date(info.get("upload_date", ""))
+    mod_date = _format_date(info.get("modified_date", ""))
+
     # 5. Chinese summary (with QC)
     print("  [5/6] Generating zh-TW summary...")
     summary_zh = generate_summary_with_qc(
@@ -786,6 +821,8 @@ def process_video(
         info["chapters"],
         screenshots,
         lang="zh-TW",
+        upload_date=pub_date,
+        modified_date=mod_date,
     )
     (out_dir / "summary_zh-tw.md").write_text(summary_zh, encoding="utf-8")
 
@@ -798,6 +835,8 @@ def process_video(
         info["chapters"],
         screenshots,
         lang="en",
+        upload_date=pub_date,
+        modified_date=mod_date,
     )
     (out_dir / "summary_en.md").write_text(summary_en, encoding="utf-8")
 
