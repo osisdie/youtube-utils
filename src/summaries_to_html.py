@@ -16,12 +16,50 @@ Usage:
 
 import argparse
 import base64
+import json
 import mimetypes
 import re
 import sys
 from pathlib import Path
 
 import markdown
+
+
+def _format_date(raw: str) -> str:
+    """Convert 'YYYYMMDD' to 'YYYY-MM-DD'. Pass through if already formatted."""
+    if raw and len(raw) == 8 and raw.isdigit():
+        return f"{raw[:4]}-{raw[4:6]}-{raw[6:]}"
+    return raw or ""
+
+
+def _read_video_dates(video_dir: Path) -> tuple[str, str]:
+    """Read upload_date and modified_date from metadata.json. Returns ('', '') if unavailable."""
+    meta_path = video_dir / "metadata.json"
+    if not meta_path.exists():
+        return "", ""
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        return (
+            _format_date(meta.get("upload_date", "")),
+            _format_date(meta.get("modified_date", "")),
+        )
+    except (json.JSONDecodeError, OSError):
+        return "", ""
+
+
+def _date_subtitle_html(upload_date: str, modified_date: str, lang: str) -> str:
+    """Build an HTML subtitle line showing publish/update dates."""
+    parts = []
+    is_zh = "zh" in lang
+    if upload_date:
+        label = "發布" if is_zh else "Published"
+        parts.append(f"{label}: {upload_date}")
+    if modified_date and modified_date != upload_date:
+        label = "更新" if is_zh else "Updated"
+        parts.append(f"{label}: {modified_date}")
+    if not parts:
+        return ""
+    return f'<p class="video-date">{" ｜ ".join(parts)}</p>\n'
 
 
 def _image_to_data_uri(img_path: Path) -> str:
@@ -135,6 +173,11 @@ HTML_TEMPLATE = """\
     page-break-before: avoid;
     border-top: none;
   }}
+  .video-date {{
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin: -0.5rem 0 1rem 0;
+  }}
   .footer {{
     text-align: center;
     color: #9ca3af;
@@ -204,8 +247,12 @@ def build_html(target_dir: Path, lang: str) -> str:
         md_ext.reset()
         html_body = md_ext.convert(md_text)
 
+        # Read dates from metadata.json
+        upload_date, modified_date = _read_video_dates(vdir)
+        date_html = _date_subtitle_html(upload_date, modified_date, lang)
+
         sections.append(
-            f'<div class="video-section" id="{anchor}">\n{html_body}\n</div>'
+            f'<div class="video-section" id="{anchor}">\n{date_html}{html_body}\n</div>'
         )
         print(f"  [{i}/{len(video_dirs)}] {video_title[:60]}")
 

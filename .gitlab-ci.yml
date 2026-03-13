@@ -1,0 +1,22 @@
+stages:
+  - lint
+  - check
+
+lint:
+  stage: lint
+  image: python:3.12-slim
+  before_script:
+    - pip install --quiet ruff
+  script:
+    - ruff check src/
+    - ruff format --check src/
+
+import-check:
+  stage: check
+  image: python:3.12-slim
+  before_script:
+    - pip install --quiet openai huggingface_hub imageio-ffmpeg imageio python-dotenv markdown
+  script:
+    - python -c "from src.youtube_utils import process_video, get_channel_videos, slugify"
+    - python -c "from src.summaries_to_html import build_html"
+    - python -c "from src.html_to_pdf import html_to_pdf"

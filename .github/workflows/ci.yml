@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --quiet ruff pre-commit
+
+      - name: Run ruff lint
+        run: ruff check src/
+
+      - name: Run ruff format check
+        run: ruff format --check src/
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
+
+  import-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime dependencies
+        run: |
+          pip install --quiet openai huggingface_hub imageio-ffmpeg imageio python-dotenv markdown
+
+      - name: Verify imports
+        run: |
+          python -c "from src.youtube_utils import process_video, get_channel_videos, slugify"
+          python -c "from src.summaries_to_html import build_html"
+          python -c "from src.html_to_pdf import html_to_pdf"

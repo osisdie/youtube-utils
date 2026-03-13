@@ -27,7 +27,8 @@ output/
 *.swo
 *~
 .cursorignore
-.claude/
+.claude/*
+!.claude/agents/
 
 # OS
 .DS_Store
