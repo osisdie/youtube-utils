@@ -1,5 +1,11 @@
 # youtube-utils
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/osisdie/youtube-utils/actions/workflows/ci.yml/badge.svg)](https://github.com/osisdie/youtube-utils/actions/workflows/ci.yml)
+[![GitHub last commit](https://img.shields.io/github/last-commit/osisdie/youtube-utils)](https://github.com/osisdie/youtube-utils/commits/main)
+[![GitHub stars](https://img.shields.io/github/stars/osisdie/youtube-utils?style=social)](https://github.com/osisdie/youtube-utils/stargazers)
+
 YouTube video subtitle download, chapter screenshot extraction, and bilingual summary generation toolkit.
 
 ## Features
