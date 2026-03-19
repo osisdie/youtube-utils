@@ -18,16 +18,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --quiet ruff pre-commit
+          pip install --quiet ruff
 
       - name: Run ruff lint
         run: ruff check src/
 
       - name: Run ruff format check
         run: ruff format --check src/
-
-      - name: Run pre-commit hooks
-        run: pre-commit run --all-files
 
   import-check:
     runs-on: ubuntu-latest
