@@ -170,6 +170,7 @@ def get_video_info(video_url: str) -> dict:
         "chapters": data.get("chapters") or [],
         "subtitles": list((data.get("subtitles") or {}).keys()),
         "auto_captions": list((data.get("automatic_captions") or {}).keys()),
+        "channel": data.get("channel", ""),
         "thumbnail": data.get("thumbnail", ""),
         "upload_date": data.get("upload_date", ""),
         "modified_date": data.get("modified_date", ""),
@@ -756,6 +757,8 @@ def process_video(
     # 1. Metadata
     print("  [1/6] Fetching metadata...")
     info = get_video_info(video_url)
+    if channel_slug == "default" and info.get("channel"):
+        channel_slug = slugify(info["channel"])
     title_slug = slugify(info["title"])
     out_dir = Path(output_base) / channel_slug / title_slug
     out_dir.mkdir(parents=True, exist_ok=True)
